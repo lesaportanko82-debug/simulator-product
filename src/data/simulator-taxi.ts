@@ -42,7 +42,7 @@ export const TAXI_SCENARIO: SimulationNode[] = [
       product: "Driver & Rider App",
       role: "Product Manager",
       description: "CityCab — второй по размеру агрегатор такси в стране. Конкурент FastRide ввёл нулевую комиссию для водителей на выходные. За 48 часов мы потеряли 35% активного флота. ETA выросло с 4 до 15 минут. Пассажиры удаляют приложение. У вас 2 недели, чтобы вернуть Supply и не обанкротиться в процессе.",
-      initialMetrics: { budget: 60, morale: 40, satisfaction: 30 }
+      initialMetrics: { budget: 60, morale: 40, satisfaction: 40 }
     },
     nextId: 'day_1_start'
   },
@@ -610,7 +610,7 @@ export const TAXI_SCENARIO: SimulationNode[] = [
         impact: { budget: 0, satisfaction: -10 }
       },
       {
-        text: 'Офиц��альное письмо всем пострадавшим водителям',
+        text: 'Официальное письмо всем пострадавшим водителям',
         messageText: 'Отправляем персональные уведомления всем 2,300. Объясняем ситуацию и что мы сделали.',
         nextId: 'd4_transparent_path',
         impact: { budget: -3, satisfaction: +10, morale: +5 }
@@ -842,7 +842,7 @@ export const TAXI_SCENARIO: SimulationNode[] = [
     id: 'd7_calc_success',
     senderId: 'user',
     type: 'message',
-    text: 'Смотрим шире: удержанный водитель даёт $100/месяц маржи. 30 водителей = $3k. Плюс конкурентный эффект. Роллируем на 100%.',
+    text: 'Считаем: 30 удержанных водителей экономят $4,500 на реактивации, а рост загрузки даёт $42,000. Итого $46,500 против $40,000 затрат — окупается, и это без учёта конкурентного эффекта. Роллируем на 100%.',
     nextId: 'd7_dm_approve',
     impact: { budget: -5, morale: +5 }
   },
@@ -956,7 +956,7 @@ export const TAXI_SCENARIO: SimulationNode[] = [
     id: 'd8_partnership',
     senderId: 'director',
     type: 'message',
-    text: 'Яндекс.Такси предлагает интеграцию: мы даём им наш флот в моменты пиковой нагрузки, они отдают нам переполнение из своей зоны. B2B синергия.',
+    text: 'Яндекс Go предлагает интеграцию: мы даём им наш флот в моменты пиковой нагрузки, они отдают нам переполнение из своей зоны. B2B синергия.',
     nextId: 'd8_sara_view',
     delay: 800
   },

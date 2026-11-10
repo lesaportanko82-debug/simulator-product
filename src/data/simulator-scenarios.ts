@@ -356,7 +356,7 @@ export const DAY_1_SCENARIO: SimulationNode[] = [
     id: 'w1_competitor_brief',
     senderId: 'marketing',
     type: 'message',
-    text: 'Я провела анализ конкурентов. TitanCard (от Альфа) — 4.2 звезды, жалуются на поддержку. BlackEdge (Тинькофф) — красивый, но нет мобильных платежей для iOS.',
+    text: 'Я провела анализ конкурентов. TitanCard (от Альфа) — 4.2 звезды, жалуются на поддержку. BlackEdge (Т-Банк) — красивый, но нет мобильных платежей для iOS.',
     nextId: 'w1_competitor_2',
     delay: 1000
   },
@@ -364,7 +364,7 @@ export const DAY_1_SCENARIO: SimulationNode[] = [
     id: 'w1_competitor_2',
     senderId: 'marketing',
     type: 'message',
-    text: 'Наша opportunity: Apple Pay + Google Pay с первого дня, реальная консьерж-служба (не бот), и вес карты 18 граммов — тяжелее всех на рынке.',
+    text: 'Наша opportunity: Apple Pay + Google Pay с первого дня, реальная консьерж-служба (не бот), и вес карты 18 граммов — ощутимо тяжелее обычного пластика.',
     nextId: 'prologue_choice',
     delay: 800
   },
@@ -514,7 +514,7 @@ export const DAY_1_SCENARIO: SimulationNode[] = [
     id: 'w1_design_conflict',
     senderId: 'marketing',
     type: 'message',
-    text: 'Три концепта. Вариант "Stealth": полностью матовая чёрная, без номера, без имени. Только чип. Концерт в кармане.',
+    text: 'Три концепта. Вариант "Stealth": полностью матовая чёрная, без номера, без имени. Только чип. Минимализм в кармане.',
     nextId: 'w1_design_2',
     delay: 800
   },
@@ -1897,7 +1897,7 @@ export const DAY_1_SCENARIO: SimulationNode[] = [
     id: 'w8_bold_ask',
     senderId: 'ceo',
     type: 'message',
-    text: 'Совет одобрил. $500k выделено. Александр сказал: "Впервые за пять лет у нас PM, который не боится говорить правду и просить ресурсы на реальные проблемы."',
+    text: 'Совет одобрил. $500k выделено. Скажу честно: впервые за пять лет у нас PM, который не боится говорить правду и просить ресурсы на реальные проблемы.',
     nextId: 'ending_success',
     delay: 1000
   },

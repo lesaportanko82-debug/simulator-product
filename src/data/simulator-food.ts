@@ -618,7 +618,7 @@ export const FOOD_SCENARIO: SimulationNode[] = [
     id: 'd3_fire_karen',
     senderId: 'sales',
     type: 'message',
-    text: 'KFC разрывает контракт. Они не хотят ассоциироваться с этим. Карен.',
+    text: 'KFC разрывает контракт. Они не хотят ассоциироваться с этим.',
     nextId: 'd3_mcd_crisis',
     delay: 800,
     isStressful: true
