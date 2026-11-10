@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { DayPicker } from 'react-day-picker';
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, addDays, startOfMonth, startOfDay, startOfWeek, endOfMonth, isSameDay, isSameMonth } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, Calendar as CalendarIcon, Clock, CheckCircle, Loader2, Send } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle, Loader2, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { projectId } from '/utils/supabase/info';
-import 'react-day-picker/dist/style.css';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -23,7 +21,8 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const today = new Date();
-  const maxDate = addMonths(today, 1);
+  const maxDate = addMonths(startOfDay(today), 2);
+  const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(new Date()));
   const availableTimes = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00'];
 
   const isDateDisabled = (date: Date) => {
@@ -34,51 +33,52 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const step = !selectedDate ? 1 : !selectedTime ? 2 : 3;
   const canSubmit = selectedDate && selectedTime && telegram.trim().length >= 3 && !isSubmitting;
 
-  const handleBooking = () => {
+  const resetAndClose = () => {
+    onClose();
+    setIsSuccess(false);
+    setSelectedDate(undefined);
+    setSelectedTime(null);
+    setTelegram('');
+  };
+
+  const handleBooking = async () => {
     if (!canSubmit) return;
     setIsSubmitting(true);
-
     const tg = telegram.trim().replace(/^@/, '');
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { toast.error('Ошибка: пользователь не найден'); setIsSubmitting(false); return; }
-
-      const fullBookingData = {
-        date: selectedDate!.toISOString(),
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user || !session?.access_token) {
+        toast.error('Войдите в аккаунт, чтобы записаться');
+        return;
+      }
+      const d = selectedDate!;
+      const bookingData = {
+        date: format(d, 'yyyy-MM-dd'),
         time: selectedTime,
         userId: user.id,
         userEmail: user.email,
         telegram: tg,
       };
-
-      const localBookings = JSON.parse(localStorage.getItem('pm-bookings') || '[]');
-      localBookings.push({ ...fullBookingData, id: `local-${Date.now()}`, createdAt: new Date().toISOString() });
-      localStorage.setItem('pm-bookings', JSON.stringify(localBookings));
-
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (projectId && session?.access_token) {
-          fetch(`https://${projectId}.supabase.co/functions/v1/make-server-0610b5e4/bookings`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-            body: JSON.stringify(fullBookingData)
-          }).catch(() => {});
-        }
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-0610b5e4/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(bookingData),
       });
-    }).catch(() => { toast.error('Ошибка при записи.'); setIsSubmitting(false); });
-
-    setTimeout(() => {
-      setIsSubmitting(false);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      try {
+        const local = JSON.parse(localStorage.getItem('pm-bookings') || '[]');
+        local.push({ ...bookingData, id: `local-${Date.now()}`, createdAt: new Date().toISOString() });
+        localStorage.setItem('pm-bookings', JSON.stringify(local));
+      } catch { /* ignore */ }
       setIsSuccess(true);
       toast.success('Запись создана! Ждём вас 🎉');
-    }, 120);
-
-    setTimeout(() => {
-      onClose();
-      setIsSuccess(false);
-      setSelectedDate(undefined);
-      setSelectedTime(null);
-      setTelegram('');
-    }, 2500);
+      setTimeout(resetAndClose, 2500);
+    } catch {
+      toast.error('Не удалось записаться. Попробуйте ещё раз или напишите в Telegram @ohh_lessya');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -90,7 +90,7 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-        className="w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row rounded-t-2xl sm:rounded-2xl"
+        className="w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col md:flex-row rounded-t-2xl sm:rounded-2xl"
         style={{ maxHeight: '95dvh' }}
       >
         {/* Left panel */}
@@ -176,32 +176,22 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
                 </p>
               </div>
             ) : (
-              <div className="p-6 flex flex-col md:flex-row gap-6">
+              <div className="p-5 sm:p-6 flex flex-col lg:flex-row gap-6">
                 {/* Calendar */}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: '#0891b2' }}>
                     <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white" style={{ background: '#0891b2' }}>1</span>
                     Выберите дату
                   </p>
-                  <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #cffafe' }}>
-                    <style>{`
-                      .rdp { --rdp-accent-color: #0891b2; --rdp-accent-background-color: #cffafe; margin: 0; padding: 12px; }
-                      .rdp-day_selected:not(.rdp-day_disabled) { background: #0891b2 !important; color: white !important; }
-                      .rdp-day_selected:not(.rdp-day_disabled):hover { background: #0e7490 !important; }
-                      .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) { background: #cffafe !important; color: #164e63 !important; }
-                      .rdp-day_disabled { opacity: 0.25; }
-                      .rdp-head_cell { color: #9ca3af; font-size: 11px; font-weight: 600; }
-                      .rdp-nav_button:hover { background: #cffafe !important; }
-                      .rdp-caption_label { font-size: 13px; font-weight: 700; color: #164e63; }
-                    `}</style>
-                    <DayPicker
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(d) => { setSelectedDate(d); setSelectedTime(null); }}
-                      disabled={[{ before: today }, { after: maxDate }, (date) => isDateDisabled(date)]}
-                      locale={ru}
-                    />
-                  </div>
+                  <MiniCalendar
+                    month={viewMonth}
+                    onMonthChange={setViewMonth}
+                    minMonth={startOfMonth(today)}
+                    maxMonth={startOfMonth(maxDate)}
+                    selected={selectedDate}
+                    isDisabled={(d) => d < startOfDay(today) || d > maxDate || isDateDisabled(d)}
+                    onSelect={(d) => { setSelectedDate(d); setSelectedTime(null); }}
+                  />
                 </div>
 
                 {/* Time + Telegram */}
@@ -287,6 +277,86 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
           </div>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+interface MiniCalendarProps {
+  month: Date;
+  onMonthChange: (m: Date) => void;
+  minMonth: Date;
+  maxMonth: Date;
+  selected?: Date;
+  isDisabled: (d: Date) => boolean;
+  onSelect: (d: Date) => void;
+}
+
+function MiniCalendar({ month, onMonthChange, minMonth, maxMonth, selected, isDisabled, onSelect }: MiniCalendarProps) {
+  const canPrev = month > minMonth;
+  const canNext = month < maxMonth;
+  const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
+  const gridEnd = endOfMonth(month);
+  const days: Date[] = [];
+  for (let d = gridStart; d <= gridEnd || days.length % 7 !== 0; d = addDays(d, 1)) days.push(d);
+  const today = new Date();
+  const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const title = format(month, 'LLLL yyyy', { locale: ru });
+
+  return (
+    <div className="rounded-2xl bg-white border border-cyan-100 p-3 sm:p-4 w-full">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => canPrev && onMonthChange(addMonths(month, -1))}
+          disabled={!canPrev}
+          aria-label="Предыдущий месяц"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-cyan-700 hover:bg-cyan-50 disabled:opacity-25 disabled:hover:bg-transparent"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-bold text-cyan-900 capitalize">{title}</span>
+        <button
+          type="button"
+          onClick={() => canNext && onMonthChange(addMonths(month, 1))}
+          disabled={!canNext}
+          aria-label="Следующий месяц"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-cyan-700 hover:bg-cyan-50 disabled:opacity-25 disabled:hover:bg-transparent"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {weekdays.map((w) => (
+          <div key={w} className="text-center text-[10px] font-semibold uppercase text-gray-400 py-1">{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((d) => {
+          const inMonth = isSameMonth(d, month);
+          if (!inMonth) return <div key={d.toISOString()} />;
+          const disabled = isDisabled(d);
+          const isSel = selected && isSameDay(d, selected);
+          const isToday = isSameDay(d, today);
+          return (
+            <button
+              key={d.toISOString()}
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelect(d)}
+              className={clsx(
+                'aspect-square w-full rounded-lg text-sm font-medium flex items-center justify-center transition-colors',
+                isSel && 'bg-cyan-600 text-white shadow-sm',
+                !isSel && !disabled && 'text-cyan-900 bg-cyan-50 hover:bg-cyan-100',
+                disabled && 'text-gray-300 cursor-not-allowed',
+                isToday && !isSel && 'ring-1 ring-cyan-400',
+              )}
+            >
+              {d.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-gray-400 mt-3 text-center">Доступны Пн, Ср, Пт на ближайшие 2 месяца</p>
     </div>
   );
 }

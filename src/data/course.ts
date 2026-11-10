@@ -1,5 +1,6 @@
 import { week1 } from './course-week1';
 import { week2 } from './course-week2';
+import { week8 } from './course-week8';
 import { BookOpen, Target, Users, BarChart, Zap, Globe, Shield, Truck, Activity } from 'lucide-react';
 
 export type ContentTab = 'theory' | 'example' | 'practice' | 'task';
@@ -2845,4 +2846,4 @@ Data-informed решение: добавить период адаптации (
 
 // Weeks 1 & 2 replaced by the expanded versions from their dedicated files.
 // Weeks 3-7 inline definitions below.
-export const courseData: Week[] = [week1, week2, ..._rawCourseData.slice(2)];
+export const courseData: Week[] = [week1, week2, ..._rawCourseData.slice(2), week8];

@@ -317,8 +317,8 @@ export function ModuleView({ progress, onComplete }: ModuleViewProps) {
     const duration = 3000;
     const end = Date.now() + duration;
     const frame = () => {
-      confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#6366f1', '#a855f7', '#ec4899'] });
-      confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#6366f1', '#a855f7', '#ec4899'] });
+      confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#0891b2', '#06b6d4', '#06b6d4'] });
+      confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#0891b2', '#06b6d4', '#06b6d4'] });
       if (Date.now() < end) requestAnimationFrame(frame);
     };
     frame();

@@ -432,7 +432,7 @@ const SqlTask = ({ task, onComplete }: { task: SimulationTask, onComplete: (succ
                         onClick={() => onComplete(option.id === task.correctValue)}
                         className="w-full text-left px-3 py-2 rounded-lg font-mono text-xs text-blue-300 transition-all"
                         style={{ background: '#1e293b', border: '1px solid #334155' }}
-                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#3b82f6'; (e.currentTarget as HTMLElement).style.background = '#1e3a5f'; }}
+                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0891b2'; (e.currentTarget as HTMLElement).style.background = '#1e3a5f'; }}
                         onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#334155'; (e.currentTarget as HTMLElement).style.background = '#1e293b'; }}
                     >
                         <span className="opacity-40 mr-2">$</span>{option.text}
@@ -1051,7 +1051,7 @@ export function Simulator() {
                         setIsReading(false);
                         const nxt = pendingNextIdRef.current;
                         pendingNextIdRef.current = null;
-                        if (nxt) setCurrentNodeId(nxt);
+                        if (nxt) goToNode(nxt);
                     }, readMs);
                 }
             }, typingMs);
@@ -1084,7 +1084,7 @@ export function Simulator() {
                         setIsReading(false);
                         const nxt = pendingNextIdRef.current;
                         pendingNextIdRef.current = null;
-                        if (nxt) setCurrentNodeId(nxt);
+                        if (nxt) goToNode(nxt);
                     }, readMs);
                 }
             }, appearMs);
@@ -1107,11 +1107,31 @@ export function Simulator() {
         setPendingReply(null);
         // Message is already in history — just advance the story
         if (nextId) {
-            setCurrentNodeId(nextId);
+            goToNode(nextId);
         } else {
             // No nextId: scenario dead-end, stay in place gracefully
             console.warn('handleReply: pendingReply.nextId is undefined for node', pendingReply.id);
         }
+    };
+
+    // Финал зависит от решений: при слабых метриках «успешный» финал заменяется финалом провала.
+    const metricsRef = useRef(metrics);
+    useEffect(() => { metricsRef.current = metrics; }, [metrics]);
+    const failEndingId = activeScenario.find((n) => n.type === 'ending' && /fail|bad/.test(n.id))?.id;
+    const isCritical = (m: GameMetrics) => m.budget <= 0 || m.morale <= 0 || m.satisfaction <= 0;
+    const isWeak = (m: GameMetrics) =>
+        Math.min(m.budget, m.morale, m.satisfaction) <= 15 || (m.budget + m.morale + m.satisfaction) / 3 < 40;
+    const goToNode = (id: string) => {
+        const target = activeScenario.find((n) => n.id === id);
+        if (failEndingId && target && id !== failEndingId) {
+            const m = metricsRef.current;
+            const endingIsFail = /fail|bad/.test(id);
+            if ((target.type === 'ending' && !endingIsFail && isWeak(m)) || isCritical(m)) {
+                setCurrentNodeId(failEndingId);
+                return;
+            }
+        }
+        setCurrentNodeId(id);
     };
 
     const handleChoice = (choice: any) => {
@@ -1125,6 +1145,7 @@ export function Simulator() {
                 satisfaction: Math.min(100, Math.max(0, metrics.satisfaction + (updates.satisfaction || 0))),
             };
             setMetrics(newMetrics);
+            metricsRef.current = newMetrics;
             setLastChanges(updates);
             // Use ref to avoid stale-closure race condition on rapid choices
             if (lastChangesTimerRef.current) clearTimeout(lastChangesTimerRef.current);
@@ -1148,7 +1169,7 @@ export function Simulator() {
                 story: generateStory(choice, newMetrics),
             });
         } else {
-            setCurrentNodeId(choice.nextId);
+            goToNode(choice.nextId);
         }
     };
 
@@ -1157,7 +1178,7 @@ export function Simulator() {
         pendingChoiceNextId.current = null;
         setConsequence(null);
         if (nextId) {
-            setCurrentNodeId(nextId);
+            goToNode(nextId);
         } else {
             console.warn('handleConsequenceDismiss: no nextId queued');
         }
@@ -1166,12 +1187,12 @@ export function Simulator() {
     const handleTaskComplete = (success: boolean) => {
         if (!currentNode?.task) return;
         const nextId = success ? currentNode.task.onSuccessId : currentNode.task.onFailId;
-        setCurrentNodeId(nextId);
+        goToNode(nextId);
     };
 
     const handleRetry = () => {
         if (learningModal) {
-            setCurrentNodeId(learningModal.returnNodeId);
+            goToNode(learningModal.returnNodeId);
             setLearningModal(null);
         }
     };
@@ -1260,7 +1281,7 @@ export function Simulator() {
                                             const meta = METRIC_META[key];
                                             const v = metrics[key];
                                             const ch = lastChanges?.[key] ?? null;
-                                            const trackColors = { budget: '#10b981', morale: '#0891b2', satisfaction: '#3b82f6' };
+                                            const trackColors = { budget: '#10b981', morale: '#0891b2', satisfaction: '#0891b2' };
                                             return (
                                                 <div key={key}>
                                                     <div className="flex justify-between items-center mb-1">
@@ -1324,7 +1345,7 @@ export function Simulator() {
                                 const meta = METRIC_META[key];
                                 const v = metrics[key];
                                 const ch = lastChanges?.[key] ?? null;
-                                const trackColors = { budget: '#10b981', morale: '#0891b2', satisfaction: '#3b82f6' };
+                                const trackColors = { budget: '#10b981', morale: '#0891b2', satisfaction: '#0891b2' };
                                 return (
                                     <div key={key} className="space-y-1">
                                         <div className="flex justify-between items-center">
@@ -1391,7 +1412,7 @@ export function Simulator() {
 
                                     <div className="pt-4" style={{ borderTop: '1px solid #cffafe' }}>
                                         <button
-                                            onClick={() => currentNode.nextId && setCurrentNodeId(currentNode.nextId)}
+                                            onClick={() => currentNode.nextId && goToNode(currentNode.nextId)}
                                             className="w-full text-white py-3 rounded-xl font-bold transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
                                             style={{ background: 'linear-gradient(135deg, #0891b2, #0e7490)', boxShadow: '0 4px 14px rgba(8,145,178,0.3)' }}
                                         >
@@ -1633,7 +1654,7 @@ export function Simulator() {
                                                         setIsReading(false);
                                                         const nxt = pendingNextIdRef.current;
                                                         pendingNextIdRef.current = null;
-                                                        if (nxt) setCurrentNodeId(nxt);
+                                                        if (nxt) goToNode(nxt);
                                                     }}
                                                     className="flex items-center gap-1.5 text-[11px] font-medium transition-colors px-2.5 py-1 rounded-full" style={{ color: '#9ca3af' }}
                                                 >

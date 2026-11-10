@@ -633,7 +633,7 @@ const StepRenderer = ({
         <div className="mt-5 pt-5" style={{ borderTop: '1px solid #f3f4f6' }}>
           <div className="flex items-start gap-2.5 mb-4">
             <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#ede9fe' }}>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: '#7c3aed' }} />
+              <Sparkles className="w-3.5 h-3.5" style={{ color: '#0e7490' }} />
             </div>
             <div>
               <p className="text-sm font-semibold" style={{ color: '#111827' }}>{step.aiTask.question}</p>

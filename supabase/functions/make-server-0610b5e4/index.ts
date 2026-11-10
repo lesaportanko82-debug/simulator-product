@@ -325,6 +325,7 @@ app.post("/make-server-0610b5e4/bookings", async (c) => {
             userEmail,
             date,
             time,
+            telegram: String(body.telegram || '').replace(/^@/, '').slice(0, 64),
             createdAt: new Date().toISOString(),
             status: 'confirmed'
         };
@@ -884,6 +885,23 @@ app.delete("/make-server-0610b5e4/admin/users/:id", async (c) => {
 });
 
 // Доступы без оплаты: журнал
+app.get("/make-server-0610b5e4/admin/bookings", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const list = (await kv.getByPrefix("booking:")) || [];
+    list.sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return c.json({ bookings: list });
+  } catch (e) { return c.json({ error: errMsg(e) }, 500); }
+});
+
+app.delete("/make-server-0610b5e4/admin/bookings", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  const id = c.req.query("id") || "";
+  if (!id.startsWith("booking:")) return c.json({ error: "Bad id" }, 400);
+  await kv.del(id);
+  return c.json({ success: true });
+});
+
 app.get("/make-server-0610b5e4/admin/grants", async (c) => {
   const denied = await checkAdmin(c); if (denied) return denied;
   try {

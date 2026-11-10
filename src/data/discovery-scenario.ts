@@ -1,6 +1,6 @@
 import { SimulationNode, GameMetrics, SimulationTask } from './simulator-scenarios';
 
-export const DISCOVERY_SCENARIO_VERSION = 112;
+export const DISCOVERY_SCENARIO_VERSION = 113;
 
 // --- Characters for Discovery ---
 export const DISCOVERY_CHARACTERS = {
@@ -198,10 +198,93 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     senderId: 'user',
     type: 'message',
     text: 'Проблема не в том, что контент скучный. Проблема в формате. Наш продукт не вписывается в контекст использования (рабочий день).',
-    nextId: 'ideation_phase'
+    nextId: 'ai_disc_start'
   },
 
   // --- PHASE 3: IDEATION & PRIORITIZATION ---
+  // --- ИИ-ветка (2026) ---
+  {
+    "id": "ai_disc_start",
+    "senderId": "tech",
+    "type": "message",
+    "text": "Слушай, зачем нам ещё 15 интервью? Сгенерируем 500 «синтетических пользователей» в LLM, опросим их за вечер. Все так сейчас делают.",
+    "nextId": "ai_disc_researcher",
+    "delay": 800
+  },
+  {
+    "id": "ai_disc_researcher",
+    "senderId": "researcher",
+    "type": "message",
+    "text": "Синтетика пересказывает то, что модель видела в интернете. Она не знает, почему конкретно наши студенты бросают уроки. Но расшифровать и разметить реальные интервью ИИ поможет отлично.",
+    "nextId": "ai_disc_choice",
+    "delay": 800
+  },
+  {
+    "id": "ai_disc_choice",
+    "senderId": "system",
+    "type": "choice",
+    "text": "Как используем ИИ в исследовании?",
+    "choices": [
+      {
+        "text": "Заменяем интервью синтетическими респондентами",
+        "messageText": "Делаем 500 синтетических интервью вместо реальных — быстро и дёшево.",
+        "nextId": "ai_disc_synth",
+        "impact": {
+          "satisfaction": -10,
+          "budget": 5
+        }
+      },
+      {
+        "text": "ИИ расшифровывает и кластеризует реальные интервью; синтетика — только чтобы отрепетировать скрипт",
+        "messageText": "Реальные интервью оставляем. ИИ делает транскрипты, ищет повторяющиеся темы с цитатами, а синтетикой только репетируем вопросы.",
+        "nextId": "ai_disc_assist",
+        "impact": {
+          "satisfaction": 10,
+          "morale": 5
+        }
+      },
+      {
+        "text": "Не используем ИИ совсем",
+        "messageText": "Всё вручную, по старинке.",
+        "nextId": "ai_disc_manual",
+        "impact": {
+          "morale": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "ai_disc_synth",
+    "senderId": "data",
+    "type": "message",
+    "text": "Синтетические респонденты хором сказали, что им «не хватает геймификации» — ровно то, что хотел Марк. Реальные данные потом покажут: уходят из-за длины уроков. Две недели потеряны.",
+    "nextId": "ai_disc_wrap",
+    "delay": 900
+  },
+  {
+    "id": "ai_disc_assist",
+    "senderId": "researcher",
+    "type": "message",
+    "text": "Транскрипты и кластеры готовы за час, а не за три дня. Каждая тема подкреплена цитатами — и я проверила их вручную по записям. Главный паттерн: «смотрю в метро, урок не успеваю досмотреть».",
+    "nextId": "ai_disc_wrap",
+    "delay": 900
+  },
+  {
+    "id": "ai_disc_manual",
+    "senderId": "researcher",
+    "type": "message",
+    "text": "Сделали, но разбор занял 4 дня вместо одного. Инсайт тот же, просто позже.",
+    "nextId": "ai_disc_wrap",
+    "delay": 900
+  },
+  {
+    "id": "ai_disc_wrap",
+    "senderId": "data",
+    "type": "message",
+    "text": "Итог: ИИ ускоряет обработку данных исследования, но не заменяет источник данных — живых пользователей. Каждый вывод ИИ проверяем по исходным цитатам.",
+    "nextId": "ideation_phase",
+    "delay": 900
+  },
   {
     id: 'ideation_phase',
     senderId: 'system',
@@ -355,7 +438,7 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     text: 'Проанализируйте результаты эксперимента.',
     task: {
       type: 'log_analysis',
-      instruction: 'Сравните старый формат и новый. Есть ли статзначимый рост?',
+      instruction: 'Сравните старый формат и новый (по 1,200 пользователей в каждой группе, тест шёл 14 дней). Есть ли статзначимый рост?',
       correctValue: 'significant',
       onSuccessId: 'final_pitch',
       onFailId: 'analysis_fail',
@@ -364,7 +447,8 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
         { id: '2', time: 'Group B (Micro)', method: 'Completion Rate', status: '78%', statusColor: 'green' },
         { id: '3', time: 'Retention D7', method: 'Group A', status: '5%', isError: true },
         { id: '4', time: 'Retention D7', method: 'Group B', status: '35%', statusColor: 'green' },
-        { id: 'significant', time: 'CONCLUSION', method: 'Hypothesis Validated', status: 'Growth x6', isError: false }
+        { id: 'sample', time: 'Sample size', method: 'A: 1,200 / B: 1,200', status: '14 дней', isError: false },
+        { id: 'significant', time: 'CONCLUSION', method: 'p < 0.001 (z-тест долей)', status: 'Рост ×6, значимо', isError: false }
       ]
     }
   },

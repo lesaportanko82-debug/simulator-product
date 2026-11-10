@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SERVER_URL } from '@/lib/api';
 import { loginToEmail } from '@/lib/login';
-import { BarChart3, Users, Gift, LogOut, RefreshCw, Lock, Search, Ban, Trash2, KeyRound, Crown } from 'lucide-react';
+import { BarChart3, Users, Gift, LogOut, RefreshCw, Lock, Search, Ban, Trash2, KeyRound, Crown, CalendarDays } from 'lucide-react';
 
 /**
  * Админ-панель /admin. Вход по одному паролю (секрет ADMIN_PASSWORD в Supabase).
@@ -49,7 +49,7 @@ const btn = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs fon
 export function AdminPanel() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState<'stats' | 'users' | 'grants'>('stats');
+  const [tab, setTab] = useState<'stats' | 'users' | 'grants' | 'bookings'>('stats');
 
   const tryLogin = useCallback(async (pw: string) => {
     await api('/stats', {}, pw);
@@ -72,6 +72,7 @@ export function AdminPanel() {
     { id: 'stats' as const, label: 'Статистика', icon: BarChart3 },
     { id: 'users' as const, label: 'Пользователи', icon: Users },
     { id: 'grants' as const, label: 'Доступы без оплаты', icon: Gift },
+    { id: 'bookings' as const, label: 'Записи на Q&A', icon: CalendarDays },
   ];
 
   return (
@@ -94,6 +95,7 @@ export function AdminPanel() {
         {tab === 'stats' && <StatsTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'grants' && <GrantsTab />}
+        {tab === 'bookings' && <BookingsTab />}
       </main>
     </div>
   );
@@ -359,6 +361,48 @@ function GrantsTab() {
           </table>
         )}
       </div>
+    </div>
+  );
+}
+
+type Booking = { id: string; userEmail: string; date: string; time: string; telegram?: string; createdAt: string };
+
+function BookingsTab() {
+  const [items, setItems] = useState<Booking[] | null>(null);
+  const load = useCallback(() => { api('/bookings').then((d) => setItems(d.bookings)).catch((e) => toast.error(e.message)); }, []);
+  useEffect(load, [load]);
+  const fmt = (d: string) => { const x = new Date(d.length === 10 ? d + 'T12:00:00' : d); return isNaN(+x) ? d : x.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }); };
+  const remove = async (id: string) => {
+    if (!confirm('Удалить запись?')) return;
+    try { await api(`/bookings?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); toast.success('Удалено'); load(); } catch (e: any) { toast.error(e.message); }
+  };
+  return (
+    <div className={card}>
+      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+        <h2 className="font-semibold text-slate-800">Записи на Q&A</h2>
+        <button onClick={load} className={`${btn} border-slate-200 text-slate-600 hover:bg-slate-50`}><RefreshCw className="w-3.5 h-3.5" />Обновить</button>
+      </div>
+      {!items ? <p className="p-6 text-sm text-slate-500">Загрузка…</p> : items.length === 0 ? <p className="p-6 text-sm text-slate-500">Записей пока нет</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-slate-500 bg-slate-50">
+              <tr><th className="px-4 py-2">Дата</th><th className="px-4 py-2">Время (МСК)</th><th className="px-4 py-2">Telegram</th><th className="px-4 py-2">Пользователь</th><th className="px-4 py-2">Создана</th><th /></tr>
+            </thead>
+            <tbody>
+              {items.map((b) => (
+                <tr key={b.id} className="border-t border-slate-100">
+                  <td className="px-4 py-2 font-medium text-slate-800">{fmt(b.date)}</td>
+                  <td className="px-4 py-2">{b.time}</td>
+                  <td className="px-4 py-2">{b.telegram ? <a className="text-cyan-700 hover:underline" href={`https://t.me/${b.telegram}`} target="_blank" rel="noreferrer">@{b.telegram}</a> : '—'}</td>
+                  <td className="px-4 py-2 text-slate-600">{b.userEmail?.endsWith('@login.product-simulator.com') ? 'логин' : b.userEmail}</td>
+                  <td className="px-4 py-2 text-slate-500">{fmtDate(b.createdAt)}</td>
+                  <td className="px-4 py-2 text-right"><button onClick={() => remove(b.id)} className={`${btn} border-red-200 text-red-600 hover:bg-red-50`}><Trash2 className="w-3.5 h-3.5" /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
