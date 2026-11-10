@@ -14,9 +14,6 @@ function errMsg(e: unknown): string {
 
 
 // --- Auth helpers ---
-const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "")
-  .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-
 const authClient = createClient(
   Deno.env.get("SUPABASE_URL") || "",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
@@ -32,10 +29,6 @@ async function getUser(c: any): Promise<any | null> {
   return data.user;
 }
 
-function isAdmin(user: any): boolean {
-  return !!user?.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase());
-}
-
 /** userId из пути, если он принадлежит текущему пользователю (или пользователь — админ).
  *  "me"/"demo-user" заменяются на id текущего пользователя. */
 async function resolveUserId(c: any): Promise<string | null> {
@@ -43,7 +36,7 @@ async function resolveUserId(c: any): Promise<string | null> {
   if (!user) return null;
   const param = c.req.param("userId");
   if (!param || param === "me" || param === "demo-user") return user.id;
-  if (param === user.id || isAdmin(user)) return param;
+  if (param === user.id) return param;
   return null;
 }
 
@@ -55,7 +48,7 @@ app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-client-info"],
+    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-client-info", "X-Admin-Password"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
@@ -348,7 +341,7 @@ app.post("/make-server-0610b5e4/bookings", async (c) => {
 
 // Get all bookings (admin)
 app.get("/make-server-0610b5e4/bookings", async (c) => {
-    if (!isAdmin(await getUser(c))) return c.json({ error: "Forbidden" }, 403);
+    const denied = await checkAdmin(c); if (denied) return denied;
     try {
         // In a real app, verify admin role here
         // For now, we return all bookings
@@ -356,50 +349,6 @@ app.get("/make-server-0610b5e4/bookings", async (c) => {
         return c.json({ bookings: bookings || [] });
     } catch (error) {
         console.error("Fetch bookings error:", error);
-        return c.json({ error: errMsg(error) }, 500);
-    }
-});
-
-// --- Auth Mock ---
-
-// Admin: Get all users
-app.get("/make-server-0610b5e4/admin/users", async (c) => {
-    if (!isAdmin(await getUser(c))) return c.json({ error: "Forbidden" }, 403);
-    try {
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') || '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-        );
-
-        const { data: { users }, error } = await supabase.auth.admin.listUsers({
-            page: 1,
-            perPage: 1000
-        });
-
-        if (error) {
-            console.error("List users error:", error);
-            return c.json({ error: error.message }, 500);
-        }
-
-        return c.json({ users });
-    } catch (error) {
-        return c.json({ error: errMsg(error) }, 500);
-    }
-});
-
-// Admin: Get user details (progress, answers)
-app.get("/make-server-0610b5e4/admin/user-details/:userId", async (c) => {
-    if (!isAdmin(await getUser(c))) return c.json({ error: "Forbidden" }, 403);
-    const userId = await resolveUserId(c);
-    if (!userId) return c.json({ error: "Unauthorized" }, 401);
-    try {
-        const progress = await kv.get(`progress:${userId}`);
-        const answers = await kv.get(`answers:${userId}`);
-        return c.json({ 
-            progress: progress || {},
-            answers: answers || {}
-        });
-    } catch (error) {
         return c.json({ error: errMsg(error) }, 500);
     }
 });
@@ -690,6 +639,300 @@ app.post("/make-server-0610b5e4/ai/chat", async (c) => {
     } catch (error) {
         return c.json({ error: errMsg(error) }, 500);
     }
+});
+
+// ===================== ADMIN PANEL (пароль ADMIN_PASSWORD) =====================
+// Вход по одному паролю из секрета ADMIN_PASSWORD (заголовок X-Admin-Password).
+// Сравнение в константное время, длина секрета ≥ 8, блокировка IP на 15 минут после 8 неудач.
+
+const PROJECT = "simulator product";
+const PLANS = ["trial", "month", "lifetime"];
+const ADMIN_FAIL_LIMIT = 8;
+const ADMIN_LOCK_MS = 15 * 60 * 1000;
+
+// Единое преобразование «логин → email». ДОЛЖНО совпадать с src/lib/login.ts.
+const LOGIN_EMAIL_DOMAIN = "login.product-simulator.com";
+function b64url(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function loginToEmail(login: string): string {
+  const v = String(login || "").trim().toLowerCase();
+  if (!v) return "";
+  if (v.includes("@")) return v;
+  return `${b64url(v)}@${LOGIN_EMAIL_DOMAIN}`.toLowerCase();
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  const n = Math.max(x.length, y.length);
+  for (let i = 0; i < n; i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
+function clientIp(c: any): string {
+  return (c.req.header("x-forwarded-for") || "").split(",")[0].trim()
+    || c.req.header("cf-connecting-ip") || c.req.header("x-real-ip") || "unknown";
+}
+
+/** null — пароль верный; иначе готовый ответ с ошибкой. */
+async function checkAdmin(c: any): Promise<Response | null> {
+  const expected = Deno.env.get("ADMIN_PASSWORD") || "";
+  if (expected.length < 8) return c.json({ error: "Секрет ADMIN_PASSWORD не задан или короче 8 символов" }, 503);
+  const key = `admin_fail:${clientIp(c)}`;
+  const now = Date.now();
+  let rec: any = (await kv.get(key)) || { count: 0, until: 0 };
+  if (rec.until && rec.until > now) {
+    return c.json({ error: "Слишком много неверных попыток. Попробуйте через 15 минут." }, 429);
+  }
+  if (rec.until && rec.until <= now) rec = { count: 0, until: 0 };
+  const given = c.req.header("X-Admin-Password") || "";
+  if (!safeEqual(given, expected)) {
+    const count = (rec.count || 0) + 1;
+    await kv.set(key, { count, until: count >= ADMIN_FAIL_LIMIT ? now + ADMIN_LOCK_MS : 0 });
+    return c.json({ error: "Неверный пароль" }, 401);
+  }
+  if (rec.count) await kv.del(key);
+  return null;
+}
+
+async function listAllUsers(): Promise<any[]> {
+  const all: any[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await authClient.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(error.message);
+    all.push(...data.users);
+    if (data.users.length < 1000) break;
+  }
+  return all;
+}
+
+async function accessMap(): Promise<Map<string, any>> {
+  const { data, error } = await authClient.from("user_access").select("*").eq("project", PROJECT);
+  if (error) throw new Error(error.message);
+  return new Map((data || []).map((r: any) => [r.user_id, r]));
+}
+
+function isPaidActive(a: any): boolean {
+  if (!a || a.status !== "active") return false;
+  return !a.expires_at || new Date(a.expires_at) > new Date();
+}
+
+function isBanned(u: any): boolean {
+  return !!u.banned_until && new Date(u.banned_until) > new Date();
+}
+
+function expiresFor(term: string): string | null {
+  if (term === "forever") return null;
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString();
+}
+
+async function setAccess(userId: string, email: string | null, plan: string, term: string) {
+  const now = new Date().toISOString();
+  if (plan === "none") {
+    const { error } = await authClient.from("user_access").upsert({
+      user_id: userId, email, project: PROJECT, plan: "free", status: "inactive",
+      starts_at: null, expires_at: null, updated_at: now,
+    }, { onConflict: "user_id,project" });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  if (!PLANS.includes(plan)) throw new Error("Неизвестный тариф");
+  const { error } = await authClient.from("user_access").upsert({
+    user_id: userId, email, project: PROJECT, plan, status: "active",
+    starts_at: now, expires_at: expiresFor(term), updated_at: now,
+  }, { onConflict: "user_id,project" });
+  if (error) throw new Error(error.message);
+}
+
+function userView(u: any, a: any) {
+  return {
+    id: u.id,
+    email: u.email,
+    login: u.user_metadata?.login || null,
+    name: u.user_metadata?.full_name || u.user_metadata?.name || null,
+    created_at: u.created_at,
+    last_sign_in_at: u.last_sign_in_at,
+    blocked: isBanned(u),
+    plan: a?.plan || null,
+    status: a?.status || null,
+    expires_at: a?.expires_at || null,
+    active_access: isPaidActive(a),
+    own: !!a, // есть запись доступа этого приложения
+  };
+}
+
+// Статистика
+app.get("/make-server-0610b5e4/admin/stats", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const [users, access] = await Promise.all([listAllUsers(), accessMap()]);
+    const now = Date.now();
+    const byPlan: Record<string, number> = { trial: 0, month: 0, lifetime: 0 };
+    for (const a of access.values()) if (isPaidActive(a) && byPlan[a.plan] !== undefined) byPlan[a.plan]++;
+    const progress = await kv.getByPrefix("progress:");
+    const answers = await kv.getByPrefix("answers:");
+    const answersCount = answers.reduce((n: number, v: any) => n + (v && typeof v === "object" ? Object.keys(v).length : 0), 0);
+    return c.json({
+      total_users: users.length,
+      paid_by_plan: byPlan,
+      paid_total: byPlan.month + byPlan.lifetime,
+      active_month: users.filter((u) => u.last_sign_in_at && now - new Date(u.last_sign_in_at).getTime() < 30 * 864e5).length,
+      new_week: users.filter((u) => now - new Date(u.created_at).getTime() < 7 * 864e5).length,
+      blocked: users.filter(isBanned).length,
+      users_with_progress: progress.length,
+      case_answers: answersCount,
+    });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Пользователи
+app.get("/make-server-0610b5e4/admin/users", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const [users, access] = await Promise.all([listAllUsers(), accessMap()]);
+    const q = (c.req.query("q") || "").trim().toLowerCase();
+    let list = users.map((u) => userView(u, access.get(u.id)));
+    if (q) list = list.filter((u) => [u.email, u.login, u.name].some((v) => v && String(v).toLowerCase().includes(q)));
+    if (c.req.query("own") === "1") list = list.filter((u) => u.own);
+    list.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    return c.json({ users: list });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Блокировка / разблокировка
+app.post("/make-server-0610b5e4/admin/users/:id/block", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const { blocked } = await c.req.json();
+    const id = c.req.param("id");
+    const { error } = await authClient.auth.admin.updateUserById(id, { ban_duration: blocked ? "876000h" : "none" });
+    if (error) throw new Error(error.message);
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Смена тарифа
+app.post("/make-server-0610b5e4/admin/user-tier/:id", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const { plan, term } = await c.req.json();
+    const id = c.req.param("id");
+    const { data, error } = await authClient.auth.admin.getUserById(id);
+    if (error || !data?.user) throw new Error("Пользователь не найден");
+    await setAccess(id, data.user.email || null, String(plan), term === "forever" ? "forever" : "30d");
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Смена логина/email и пароля
+app.post("/make-server-0610b5e4/admin/users/:id/credentials", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const { login, password } = await c.req.json();
+    const id = c.req.param("id");
+    const update: any = {};
+    if (login) {
+      update.email = loginToEmail(login);
+      update.email_confirm = true;
+      const { data } = await authClient.auth.admin.getUserById(id);
+      update.user_metadata = { ...(data?.user?.user_metadata || {}), login: String(login).trim() };
+    }
+    if (password) {
+      if (String(password).length < 6) return c.json({ error: "Пароль — минимум 6 символов" }, 400);
+      update.password = String(password);
+    }
+    if (!Object.keys(update).length) return c.json({ error: "Нечего менять" }, 400);
+    const { error } = await authClient.auth.admin.updateUserById(id, update);
+    if (error) throw new Error(error.message);
+    if (update.email) {
+      await authClient.from("user_access").update({ email: update.email }).eq("user_id", id).eq("project", PROJECT);
+    }
+    return c.json({ success: true, email: update.email || null });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Удаление пользователя
+app.delete("/make-server-0610b5e4/admin/users/:id", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const id = c.req.param("id");
+    const { error } = await authClient.auth.admin.deleteUser(id);
+    if (error) throw new Error(error.message);
+    await authClient.from("user_access").delete().eq("user_id", id);
+    await kv.mdel([`progress:${id}`, `answers:${id}`, `profile:${id}`, `bookmarks:${id}`]);
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Доступы без оплаты: журнал
+app.get("/make-server-0610b5e4/admin/grants", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const grants = (await kv.get("admin_grants")) || [];
+    return c.json({ grants });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
+});
+
+// Доступы без оплаты: выдача (создаёт аккаунт сразу)
+app.post("/make-server-0610b5e4/admin/grants", async (c) => {
+  const denied = await checkAdmin(c); if (denied) return denied;
+  try {
+    const { login, password, plan, term, note } = await c.req.json();
+    const cleanLogin = String(login || "").trim();
+    if (!cleanLogin) return c.json({ error: "Укажите логин или email" }, 400);
+    if (!PLANS.includes(String(plan))) return c.json({ error: "Неизвестный тариф" }, 400);
+    const email = loginToEmail(cleanLogin);
+    const users = await listAllUsers();
+    let user = users.find((u) => (u.email || "").toLowerCase() === email);
+    let created = false;
+    if (!user) {
+      if (!password || String(password).length < 6) return c.json({ error: "Для нового аккаунта нужен пароль от 6 символов" }, 400);
+      const { data, error } = await authClient.auth.admin.createUser({
+        email, password: String(password), email_confirm: true,
+        user_metadata: { login: cleanLogin, full_name: cleanLogin.includes("@") ? undefined : cleanLogin },
+      });
+      if (error) throw new Error(error.message);
+      user = data.user;
+      created = true;
+    } else if (password) {
+      if (String(password).length < 6) return c.json({ error: "Пароль — минимум 6 символов" }, 400);
+      const { error } = await authClient.auth.admin.updateUserById(user.id, { password: String(password) });
+      if (error) throw new Error(error.message);
+    }
+    const t = term === "forever" ? "forever" : "30d";
+    await setAccess(user.id, email, String(plan), t);
+    const entry = {
+      at: new Date().toISOString(), login: cleanLogin, email, user_id: user.id,
+      plan, term: t, expires_at: expiresFor(t), note: String(note || "").slice(0, 500), created,
+    };
+    const grants: any[] = (await kv.get("admin_grants")) || [];
+    grants.unshift(entry);
+    await kv.set("admin_grants", grants.slice(0, 500));
+    return c.json({ success: true, grant: entry });
+  } catch (error) {
+    return c.json({ error: errMsg(error) }, 500);
+  }
 });
 
 Deno.serve(app.fetch);

@@ -8,7 +8,7 @@ import { KnowledgeBase } from './pages/KnowledgeBase';
 import { FAQ } from './pages/FAQ';
 import { CasePractice } from './pages/CasePractice';
 import { Profile } from './pages/Profile';
-import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminPanel } from './pages/AdminPanel';
 import { Onboarding } from './pages/Onboarding';
 import { OnboardingLanding } from './pages/OnboardingLanding';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
@@ -92,7 +92,6 @@ const MainLayout = ({ progress, markModuleComplete, userName }: {
                   <Route path="/resources/cases" element={<CasePractice />} />
                   <Route path="/resources/cases/:caseId" element={<CasePractice />} />
                   <Route path="/profile" element={<Profile progress={progress} />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
                   <Route 
                     path="/module/:moduleId" 
                     element={<ModuleView progress={progress} onComplete={markModuleComplete} />} 
@@ -107,7 +106,15 @@ const MainLayout = ({ progress, markModuleComplete, userName }: {
     );
 };
 
+// /admin — отдельная панель владельца, вход по паролю администратора (не по аккаунту пользователя).
 export default function App() {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    return (<><AdminPanel /><Toaster position="top-center" /></>);
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
   // Init push notifications on mount (respects saved preference & permission)
   useEffect(() => { initNotifications(); }, []);
 
@@ -149,7 +156,8 @@ export default function App() {
       if (!access) return false;
       return (
         access.plan === 'lifetime' ||
-        (access.expires_at && new Date(access.expires_at) > new Date())
+        !access.expires_at ||
+        new Date(access.expires_at) > new Date()
       );
     } catch {
       return false;

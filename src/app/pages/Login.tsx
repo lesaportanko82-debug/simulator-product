@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { loginToEmail } from '@/lib/login';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -30,7 +31,7 @@ export function Login({ onAuthSuccess }: LoginProps) {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: loginToEmail(email),
         password,
       });
 
@@ -211,11 +212,12 @@ export function Login({ onAuthSuccess }: LoginProps) {
                   </CardHeader>
                   <CardContent className="space-y-4 pt-6">
                     <div className="space-y-2">
-                      <Label htmlFor="signin-email">Email</Label>
+                      <Label htmlFor="signin-email">Email или логин</Label>
                       <Input
                         id="signin-email"
-                        type="email"
-                        placeholder="your@email.com"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="your@email.com или логин"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required

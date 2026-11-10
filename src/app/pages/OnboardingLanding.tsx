@@ -43,49 +43,14 @@ export const OnboardingLanding = () => {
     return true;
   };
 
-  const handleMonthlyPay = async (e: React.MouseEvent) => {
+  // Онлайн-оплата временно отключена: подключение — через поддержку в Telegram.
+  const SUPPORT_URL = 'https://t.me/ohh_lessya';
+  const openSupport = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!(await requireAuth())) return;
-    setLoadingMonth(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-simulator-yookassa-payment', {
-        body: { plan: 'month' },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.confirmation_url) {
-        window.location.href = data.confirmation_url;
-      } else {
-        throw new Error('Не получен URL для оплаты');
-      }
-    } catch (err: any) {
-      console.error('Monthly payment error:', err);
-      toast.error('Не удалось создать платёж. Попробуйте ещё раз.');
-    } finally {
-      setLoadingMonth(false);
-    }
+    window.open(SUPPORT_URL, '_blank', 'noopener');
   };
-
-  const handleLifetimePay = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!(await requireAuth())) return;
-    setLoadingLifetime(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-simulator-yookassa-payment', {
-        body: { plan: 'lifetime' },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.confirmation_url) {
-        window.location.href = data.confirmation_url;
-      } else {
-        throw new Error('Не получен URL для оплаты');
-      }
-    } catch (err: any) {
-      console.error('Lifetime payment error:', err);
-      toast.error('Не удалось создать платёж. Попробуйте ещё раз.');
-    } finally {
-      setLoadingLifetime(false);
-    }
-  };
+  const handleMonthlyPay = openSupport;
+  const handleLifetimePay = openSupport;
 
   const handleTrialStart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -294,6 +259,12 @@ export const OnboardingLanding = () => {
             </p>
           </div>
 
+          <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
+            Онлайн-оплата временно не работает из-за сбоя платёжного сервиса.
+            По вопросам подключения пишите в поддержку в Telegram:{' '}
+            <a href="https://t.me/ohh_lessya" target="_blank" rel="noopener noreferrer" className="font-semibold underline">@ohh_lessya</a>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-5">
             {/* Monthly Plan */}
             <div
@@ -348,7 +319,7 @@ export const OnboardingLanding = () => {
                   disabled={loadingMonth || loadingTrial}
                   className="w-full py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium text-sm shadow-sm hover:bg-slate-50 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {loadingMonth ? <><Loader2 className="w-4 h-4 animate-spin" />Создаём платёж...</> : 'Оплатить 1 000 ₽/мес'}
+                  {loadingMonth ? <><Loader2 className="w-4 h-4 animate-spin" />Создаём платёж...</> : 'Подключить 1 000 ₽/мес через поддержку'}
                 </button>
               </div>
             </div>
@@ -409,7 +380,7 @@ export const OnboardingLanding = () => {
                 className="w-full py-2.5 text-white rounded-xl font-medium text-sm shadow transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ background: "#0891b2" }}
               >
-                {loadingLifetime ? <><Loader2 className="w-4 h-4 animate-spin" />Создаём платёж...</> : 'Получить вечный доступ'}
+                {loadingLifetime ? <><Loader2 className="w-4 h-4 animate-spin" />Создаём платёж...</> : 'Подключить вечный доступ через поддержку'}
               </button>
             </div>
           </div>
