@@ -23,6 +23,17 @@ const weekImages: Record<number, string> = {
   7: "https://images.unsplash.com/photo-1691435828932-911a7801adfb?auto=format&fit=crop&w=800&q=80",
 };
 
+/** Ближайший день записи на Q&A: Пн, Ср или Пт, начиная с сегодняшнего дня. */
+function nextQaDate(): Date {
+  const d = new Date();
+  for (let i = 0; i < 7; i++) {
+    const day = d.getDay();
+    if (day === 1 || day === 3 || day === 5) return d;
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
 const tips = [
   "Не путайте Output и Outcome. Output — это количество фич. Outcome — это изменение поведения пользователей.",
   "Влюбитесь в проблему, а не в решение.",
@@ -312,13 +323,13 @@ export function Dashboard({ progress, userName }: DashboardProps) {
                  
                  <div className="flex items-start gap-3 relative z-10">
                     <div className="rounded-lg p-2 text-center min-w-[3.5rem]" style={{ background: "#cffafe", color: "#0e7490" }}>
-                        <div className="text-xs font-bold uppercase">Фев</div>
-                        <div className="text-lg font-black">28</div>
+                        <div className="text-xs font-bold uppercase">{nextQaDate().toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')}</div>
+                        <div className="text-lg font-black">{nextQaDate().getDate()}</div>
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-gray-800">Разбор домашек с ментором</p>
+                        <p className="text-sm font-bold text-gray-800">Разбор вопросов с ментором</p>
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                            <Clock className="w-3 h-3" /> 19:00 (МСК)
+                            <Clock className="w-3 h-3" /> 09:00–14:00 (МСК)
                         </div>
                     </div>
                  </div>
