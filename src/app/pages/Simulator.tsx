@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, User, Users, ChevronRight, BookOpen, X, Lightbulb, PlayCircle, Terminal, AlertCircle, CheckCircle2, Briefcase, Calculator, FileText, CheckSquare, Database, AlertTriangle, RefreshCcw, DollarSign, Heart, Smile, Share2, Crown, Zap, Skull, Ghost, ChevronDown, Sparkles, HelpCircle, Target, CheckCheck, Clock, Paperclip, ArrowRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -938,6 +938,11 @@ export function Simulator() {
     const activeScenarioId = scenarioId || 'fintech';
     const config = SCENARIOS[activeScenarioId] || SCENARIOS['fintech'];
     const { scenario: activeScenario, characters: activeCharacters } = config;
+    // Участники — только те, кто реально говорит в этом сценарии (без унаследованных персонажей других симуляций)
+    const castCharacters = useMemo(() => {
+        const used = new Set(activeScenario.map((n) => n.senderId));
+        return Object.fromEntries(Object.entries(activeCharacters).filter(([key]) => used.has(key) || key === 'system'));
+    }, [activeScenario, activeCharacters]);
 
     const [history, setHistory] = useState<SimulationNode[]>([]);
     const [currentNodeId, setCurrentNodeId] = useState<string>(activeScenario[0].id);
@@ -1334,7 +1339,7 @@ export function Simulator() {
                                 <div>
                                     <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Участники</p>
                                     <div className="flex gap-2 flex-wrap">
-                                        {Object.entries(activeCharacters)
+                                        {Object.entries(castCharacters)
                                             .filter(([key]: [string, any]) => key !== 'user' && key !== 'system')
                                             .map(([key, c]: [string, any]) => (
                                                 <div key={key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1399,7 +1404,7 @@ export function Simulator() {
                         {/* Characters list */}
                         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1 custom-scrollbar">
                             <p className="text-[10px] font-bold uppercase tracking-widest px-2 mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>Участники</p>
-                            {Object.entries(activeCharacters)
+                            {Object.entries(castCharacters)
                                 .filter(([key]: [string, any]) => key !== 'user' && key !== 'system')
                                 .map(([key, c]: [string, any]) => (
                                     <div key={key} className="flex items-center gap-2.5 px-2 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -1557,7 +1562,7 @@ export function Simulator() {
                                 {/* Participants row */}
                                 <div className="px-4 py-1.5 flex items-center gap-2" style={{ background: '#f0fdff' }}>
                                     <div className="flex -space-x-2">
-                                        {Object.entries(activeCharacters)
+                                        {Object.entries(castCharacters)
                                             .filter(([key, c]: [string, any]) => c.avatar && key !== 'user' && key !== 'system')
                                             .slice(0, 4)
                                             .map(([key, c]: [string, any]) => (
@@ -1565,7 +1570,7 @@ export function Simulator() {
                                             ))}
                                     </div>
                                     <span className="text-[10px] font-medium truncate" style={{ color: '#9ca3af' }}>
-                                        {Object.entries(activeCharacters)
+                                        {Object.entries(castCharacters)
                                             .filter(([key]: [string, any]) => key !== 'user' && key !== 'system')
                                             .slice(0, 3)
                                             .map(([, c]: [string, any]) => c.name)
