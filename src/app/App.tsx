@@ -314,7 +314,7 @@ function MainApp() {
 
       const loadedProgress = await loadUserProgress(defaultProgress);
       clearTimeout(progressTimeout);
-      setProgress(loadedProgress);
+      setProgress({ ...defaultProgress, ...loadedProgress });
       setLoadingProgress(false);
     } catch (error) {
       console.error('Failed to load progress:', error);

@@ -1,6 +1,11 @@
-import { week1 } from './course-week1';
-import { week2 } from './course-week2';
 import { week8 } from './course-week8';
+import { pmmWeek1 } from './pmm-week1';
+import { pmmWeek2 } from './pmm-week2';
+import { pmmWeek3 } from './pmm-week3';
+import { pmmWeek4 } from './pmm-week4';
+import { pmmWeek5 } from './pmm-week5';
+import { buildWeek6, buildWeek7 } from './pmm-week67';
+import { buildExtras } from './pmm-extras';
 import { BookOpen, Target, Users, BarChart, Zap, Globe, Shield, Truck, Activity } from 'lucide-react';
 
 export type ContentTab = 'theory' | 'example' | 'practice' | 'task';
@@ -2846,4 +2851,17 @@ Data-informed решение: добавить период адаптации (
 
 // Weeks 1 & 2 replaced by the expanded versions from their dedicated files.
 // Weeks 3-7 inline definitions below.
-export const courseData: Week[] = [week1, week2, ..._rawCourseData.slice(2), week8];
+const byId = (id: number) => _rawCourseData.find((w) => w.id === id)!;
+
+// Курс «Продуктовый маркетинг»: 8 недель + дополнительные продуктовые уроки.
+export const courseData: Week[] = [
+  pmmWeek1,
+  pmmWeek2,
+  pmmWeek3,
+  pmmWeek4,
+  pmmWeek5,
+  buildWeek6(byId(6)),
+  buildWeek7(byId(7)),
+  week8,
+  buildExtras(byId(5)),
+];
