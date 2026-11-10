@@ -1090,7 +1090,7 @@ export const TAXI_SCENARIO: SimulationNode[] = [
     learningContent: {
       title: 'Что важнее для совета директоров',
       explanation: 'Совет директоров смотрит на долгосрочную устойчивость. Возврат водителей — тактика. Деньги кончатся — водители уйдут снова. ML-алгоритм создаёт структурное преимущество: чем больше поездок, тем лучше модель. Это то, что инвесторы называют "moat" — защитный ров.',
-      takeaway: 'Highlight structural advantages over tactical wins when presenting to the board.',
+      takeaway: 'На совете директоров показывайте структурные преимущества, а не тактические победы.',
       returnNodeId: 'd9_feature_task'
     }
   },

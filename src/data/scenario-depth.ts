@@ -374,10 +374,12 @@ once(DISCOVERY_SCENARIO, () => {
     k.msg('sample_right', 'researcher', 'Правильно. Спящие расскажут, почему бросают, а активные покажут, что работает. Пять звонков назначены.', 'phase_interviews'),
     k.msg('sample_buyers', 'researcher', 'HR покупает, но не учится. Они расскажут про отчёты и KPI, а не про то, почему сотрудники закрывают видео.', 'phase_interviews'),
   );
-  k.get('interview_result').nextId = 'r_interview';
+  k.get('task_question').task!.onSuccessId = 'r_interview';
+  k.get('interview_result').nextId = 'choice_problem';
   k.add(
-    k.router('r_interview', [{ flag: 'biased_sample', nextId: 'interview_biased' }], 'choice_problem'),
-    k.msg('interview_biased', 'researcher', 'Честно: из-за выборки картина смазана. Двое из пяти сказали про длину видео, остальные — про отчёты для HR. Я доберу ещё три звонка со спящими, это +2 дня.', 'choice_problem'),
+    k.router('r_interview', [{ flag: 'biased_sample', nextId: 'interview_biased' }], 'interview_result'),
+    k.msg('interview_biased', 'researcher', 'Честно: из-за выборки картина смазана. Двое из пяти сказали про длину видео, остальные — про отчёты для HR. Добираю три звонка со «спящими» — это +2 дня к плану.', 'interview_biased_2'),
+    k.msg('interview_biased_2', 'system', 'Через два дня. Ещё три интервью с теми, кто перестал заходить на платформу.', 'interview_result'),
   );
 
   // Формулировка проблемы
@@ -424,9 +426,10 @@ once(DISCOVERY_SCENARIO, () => {
     k.msg('control_missing', 'ceo', 'Красивые цифры, но с чем сравнивать? Может, люди просто открыли новое письмо из любопытства?', 'choice_control'),
     k.choice('choice_control', 'Что делаем без контрольной группы?', [
       { text: 'Перезапустить ещё на 2 недели с контрольной группой', nextId: 'control_rerun', impact: { budget: -10, satisfaction: 5 } },
-      { text: 'Показать как есть — цифры же хорошие', nextId: 'task_log_ab', impact: { satisfaction: -8 }, setFlags: ['weak_evidence'] },
+      { text: 'Показать как есть — цифры же хорошие', nextId: 'control_asis', impact: { satisfaction: -8 }, setFlags: ['weak_evidence'] },
     ]),
     k.msg('control_rerun', 'data', 'Перезапустили с честным делением 50/50 по 1 200 человек. Две недели — и у нас доказательства, а не впечатления.', 'task_log_ab'),
+    k.msg('control_asis', 'data', 'Ок. Но сравнить нам не с чем: досматриваемость 78% — это «после», а «до» мы мерили на других людях и в другое время. Пойдём к CEO с тем, что есть.', 'final_pitch'),
   );
 
   // Стейкхолдер после результатов
@@ -457,5 +460,14 @@ once(DISCOVERY_SCENARIO, () => {
   k.title('ending_good', 'Продукт спасён');
   k.title('ending_compromise', 'Бюджет есть, ясности нет');
 });
+
+// Потолки оценки для неудачных и компромиссных финалов
+const caps: [N[], string, number][] = [
+  [TAXI_SCENARIO, 'ending_stable', 55], [TAXI_SCENARIO, 'ending_bad', 30],
+  [DAY_1_SCENARIO, 'ending_fragile', 55], [DAY_1_SCENARIO, 'ending_fail', 30],
+  [FOOD_SCENARIO, 'ending_partial', 55], [FOOD_SCENARIO, 'ending_fail', 30],
+  [DISCOVERY_SCENARIO, 'ending_pilot', 55], [DISCOVERY_SCENARIO, 'ending_compromise', 62], [DISCOVERY_SCENARIO, 'ending_fail', 30],
+];
+for (const [S, id, cap] of caps) { const n = S.find((x) => x.id === id); if (n) n.gradeCap = cap; }
 
 export const SCENARIO_DEPTH_APPLIED = true;

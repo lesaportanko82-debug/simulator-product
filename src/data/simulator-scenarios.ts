@@ -54,6 +54,8 @@ export type SimulationNode = {
   flagRoutes?: { flag: string; nextId: string }[];
   /** Заголовок финала. */
   endingTitle?: string;
+  /** Потолок оценки для слабых финалов: итог не может быть «Senior», если концовка неудачная. */
+  gradeCap?: number;
   task?: SimulationTask;
   resource?: {
     title: string;

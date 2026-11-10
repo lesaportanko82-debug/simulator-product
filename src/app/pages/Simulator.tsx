@@ -177,16 +177,19 @@ type Psychotype = {
     quote: string;
 };
 
+// Метрики выбора показываем только после решения — иначе правильный вариант очевиден заранее.
+const SHOW_IMPACT_BEFORE_CHOICE = false;
+
 const getPsychotype = (metrics: GameMetrics): Psychotype => {
     const { budget, morale, satisfaction } = metrics;
     
     if (budget >= 70 && morale >= 60 && satisfaction >= 60) {
         return {
-            title: "CPO Material",
+            title: "Будущий CPO",
             description: "Вы — единорог. Вы умудрились заработать денег, сохранить команду и осчастливить клиентов. Такие PM стоят $300k/год.",
             icon: Crown,
             color: "text-amber-500 bg-amber-50 border-amber-200",
-            quote: "Perfectly balanced, as all things should be."
+            quote: "Бизнес, команда и клиенты — в балансе."
         };
     }
     
@@ -196,7 +199,7 @@ const getPsychotype = (metrics: GameMetrics): Psychotype => {
             description: "Бизнес растет, но команда пишет резюме. Вы достигаете целей любой ценой. Эффективно, но в долгую вы останетесь одни.",
             icon: Zap,
             color: "text-red-600 bg-red-50 border-red-200",
-            quote: "Results > Feelings."
+            quote: "Результат любой ценой."
         };
     }
 
@@ -206,7 +209,7 @@ const getPsychotype = (metrics: GameMetrics): Psychotype => {
             description: "Команда вас обожает, клиенты счастливы, но компания банкрот. Вы делаете классный продукт, который не умеет зарабатывать.",
             icon: Ghost,
             color: "text-blue-500 bg-blue-50 border-blue-200",
-            quote: "Product > Profit?"
+            quote: "Продукт важнее прибыли?"
         };
     }
 
@@ -216,7 +219,7 @@ const getPsychotype = (metrics: GameMetrics): Psychotype => {
             description: "Пожары везде. Вы пытались угодить всем, но в итоге все сломалось. В следующий раз сфокусируйтесь на чем-то одном.",
             icon: Skull,
             color: "text-gray-600 bg-gray-100 border-gray-300",
-            quote: "This is fine 🔥"
+            quote: "Всё горит, но мы держимся."
         };
     }
 
@@ -225,7 +228,7 @@ const getPsychotype = (metrics: GameMetrics): Psychotype => {
         description: "Вы не сломали продукт, но и не совершили прорыв. Осторожность — хорошее качество, но для роста нужен риск.",
         icon: Briefcase,
         color: "text-slate-600 bg-slate-50 border-slate-200",
-        quote: "Slow and steady."
+        quote: "Медленно, но верно."
     };
 };
 
@@ -712,8 +715,9 @@ ${choicesText}${taskText}`;
 
 type DecisionLog = { text: string; impact: Partial<GameMetrics> };
 
-const gradeFor = (m: GameMetrics, mistakes: number) => {
-    const score = Math.round((m.budget + m.morale + m.satisfaction) / 3 - mistakes * 3);
+const gradeFor = (m: GameMetrics, mistakes: number, costly: number, cap?: number) => {
+    let score = Math.round((m.budget + m.morale + m.satisfaction) / 3 - mistakes * 3 - costly * 4);
+    if (cap !== undefined) score = Math.min(score, cap);
     if (score >= 75) return { score, label: 'Senior-уровень', note: 'Вы держали баланс бизнеса, команды и клиентов и почти не ошибались в расчётах.', color: '#2e7b5e', bg: '#dcfce7' };
     if (score >= 60) return { score, label: 'Уверенный PM', note: 'Сильные решения, но в паре мест вы заплатили лишним ресурсом или ошибкой.', color: '#0e7490', bg: '#cffafe' };
     if (score >= 45) return { score, label: 'Есть пробелы', note: 'Продукт выжил, но часть решений и задач ударила по метрикам. Посмотрите разбор ниже.', color: '#b45309', bg: '#fef3c7' };
@@ -725,7 +729,8 @@ const impactSum = (i: Partial<GameMetrics>) => (i.budget || 0) + (i.morale || 0)
 const EndingScreen = ({ metrics, ending, decisions, mistakes, onRestart }: { metrics: GameMetrics; ending?: SimulationNode; decisions: DecisionLog[]; mistakes: string[]; onRestart: () => void }) => {
     const type = getPsychotype(metrics);
     const Icon = type.icon;
-    const g = gradeFor(metrics, mistakes.length);
+    const costly = decisions.filter((d) => impactSum(d.impact) < 0).length;
+    const g = gradeFor(metrics, mistakes.length, costly, ending?.gradeCap);
     const sorted = [...decisions].sort((a, b) => impactSum(b.impact) - impactSum(a.impact));
     const best = sorted.filter((d) => impactSum(d.impact) > 0).slice(0, 3);
     const worst = sorted.filter((d) => impactSum(d.impact) < 0).reverse().slice(0, 3);
@@ -845,7 +850,7 @@ const generateStory = (choice: any, metrics: { budget: number; morale: number; s
     parts.push('Финансовый директор уже прислал вопрос о расходах.');
   }
   if (impact.satisfaction && impact.satisfaction > 5) {
-    parts.push('В App Store появилось несколько новых положительных отзывов.');
+    parts.push('Клиенты заметили изменения — пришло несколько благодарных отзывов.');
   }
 
   return parts.join(' ');
@@ -1871,7 +1876,7 @@ export function Simulator() {
                                                                 <p className="text-[13.5px] leading-snug font-normal text-gray-800 mb-1.5">
                                                                     {choice.text}
                                                                 </p>
-                                                                {impactPills.length > 0 && (
+                                                                {SHOW_IMPACT_BEFORE_CHOICE && impactPills.length > 0 && (
                                                                     <div className="flex flex-wrap gap-1">
                                                                         {impactPills.map((pill, pi) => (
                                                                             <span key={pi} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{

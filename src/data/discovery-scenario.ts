@@ -70,9 +70,9 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'The Build Trap',
+      title: 'Ловушка «просто сделаем фичу»',
       explanation: 'Вы согласились пилить фичи без понимания проблемы. Через 3 месяца выяснится, что геймификация раздражает взрослых людей. Вы потеряли время.',
-      takeaway: 'Fall in love with the problem, not the solution.',
+      takeaway: 'Влюбляйтесь в проблему, а не в решение.',
       returnNodeId: 'choice_1'
     }
   },
@@ -116,9 +116,9 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'Data Querying',
+      title: 'Как искать в данных',
       explanation: 'Нам нужны агрегированные данные (AVG), чтобы увидеть паттерн, а не просто список пользователей.',
-      takeaway: 'Look for patterns, not just rows.',
+      takeaway: 'Ищите закономерности, а не отдельные строки.',
       returnNodeId: 'task_sql'
     }
   },
@@ -178,9 +178,9 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'Bad Question',
+      title: 'Плохой вопрос в интервью',
       explanation: 'Вы спросили про будущее. Пользователь ответил "Да, конечно!", чтобы быть вежливым. Это ложно-положительный сигнал.',
-      takeaway: 'Ask about the past behavior.',
+      takeaway: 'Спрашивайте о прошлом поведении, а не о мнениях и будущем.',
       returnNodeId: 'task_question'
     }
   },
@@ -333,9 +333,9 @@ export const DISCOVERY_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'RICE Scoring',
+      title: 'Расчёт RICE',
       explanation: 'Ошибка в расчетах. (1000 * 3 * 0.8) = 2400. Делим на Effort (4) = 600.',
-      takeaway: 'RICE helps compare apples to oranges.',
+      takeaway: 'RICE помогает сравнить несравнимые идеи по одной шкале.',
       returnNodeId: 'task_rice'
     }
   },

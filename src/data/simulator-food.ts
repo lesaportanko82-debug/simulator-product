@@ -1317,7 +1317,7 @@ export const FOOD_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'Scale Economics',
+      title: 'Экономика масштаба',
       explanation: 'При росте до 30k заказов: Переменная прибыль = 30,000 × $0.80 = $24,000. Фикс. затраты с учётом масштаба = $18,000. Итог: $24,000 − $18,000 = $6,000/день прибыли. Это и есть сила масштабирования.',
       takeaway: 'Фиксированные затраты растут медленнее выручки — это ключевой аргумент для инвесторов.',
       returnNodeId: 'd9_calc_task'
@@ -1402,7 +1402,7 @@ export const FOOD_SCENARIO: SimulationNode[] = [
     senderId: 'system',
     type: 'learning',
     learningContent: {
-      title: 'Sustainable Competitive Advantage',
+      title: 'Устойчивое конкурентное преимущество',
       explanation: 'Цена — легко скопировать. Бренд — сложно поддерживать при проблемах. Размер — временно. Алгоритм и данные — это настоящий ров: чем больше поездок, тем лучше ML-модель, тем эффективнее батчинг, тем ниже Cost per Delivery.',
       takeaway: 'Лучший "ров" — это то, что конкурент не может купить или скопировать быстро.',
       returnNodeId: 'd10_final_task'
