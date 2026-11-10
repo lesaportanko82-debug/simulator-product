@@ -7,6 +7,7 @@ import { DAY_1_SCENARIO, CHARACTERS as FINTECH_CHARACTERS, SimulationNode, Simul
 import { TAXI_SCENARIO, TAXI_CHARACTERS } from '@/data/simulator-taxi';
 import { FOOD_SCENARIO, FOOD_CHARACTERS } from '@/data/simulator-food';
 import { DISCOVERY_SCENARIO, DISCOVERY_CHARACTERS } from '@/data/discovery-scenario';
+import '@/data/scenario-depth';
 import { KanbanTask } from '@/app/components/simulator/KanbanTask';
 import { DndProvider } from 'react-dnd';
 import { TouchBackend } from 'react-dnd-touch-backend';
@@ -709,59 +710,98 @@ ${choicesText}${taskText}`;
 
 // --- Ending Component (Psychotype) ---
 
-const EndingScreen = ({ metrics, onRestart }: { metrics: GameMetrics, onRestart: () => void }) => {
+type DecisionLog = { text: string; impact: Partial<GameMetrics> };
+
+const gradeFor = (m: GameMetrics, mistakes: number) => {
+    const score = Math.round((m.budget + m.morale + m.satisfaction) / 3 - mistakes * 3);
+    if (score >= 75) return { score, label: 'Senior-уровень', note: 'Вы держали баланс бизнеса, команды и клиентов и почти не ошибались в расчётах.', color: '#2e7b5e', bg: '#dcfce7' };
+    if (score >= 60) return { score, label: 'Уверенный PM', note: 'Сильные решения, но в паре мест вы заплатили лишним ресурсом или ошибкой.', color: '#0e7490', bg: '#cffafe' };
+    if (score >= 45) return { score, label: 'Есть пробелы', note: 'Продукт выжил, но часть решений и задач ударила по метрикам. Посмотрите разбор ниже.', color: '#b45309', bg: '#fef3c7' };
+    return { score, label: 'Провал', note: 'Ресурсы или доверие исчерпаны. Пройдите симуляцию ещё раз и сравните решения.', color: '#b91c1c', bg: '#fee2e2' };
+};
+
+const impactSum = (i: Partial<GameMetrics>) => (i.budget || 0) + (i.morale || 0) + (i.satisfaction || 0);
+
+const EndingScreen = ({ metrics, ending, decisions, mistakes, onRestart }: { metrics: GameMetrics; ending?: SimulationNode; decisions: DecisionLog[]; mistakes: string[]; onRestart: () => void }) => {
     const type = getPsychotype(metrics);
     const Icon = type.icon;
+    const g = gradeFor(metrics, mistakes.length);
+    const sorted = [...decisions].sort((a, b) => impactSum(b.impact) - impactSum(a.impact));
+    const best = sorted.filter((d) => impactSum(d.impact) > 0).slice(0, 3);
+    const worst = sorted.filter((d) => impactSum(d.impact) < 0).reverse().slice(0, 3);
+    const fmt = (i: Partial<GameMetrics>) => [
+        i.budget ? `бюджет ${i.budget > 0 ? '+' : ''}${i.budget}` : '',
+        i.morale ? `команда ${i.morale > 0 ? '+' : ''}${i.morale}` : '',
+        i.satisfaction ? `клиенты ${i.satisfaction > 0 ? '+' : ''}${i.satisfaction}` : '',
+    ].filter(Boolean).join(', ');
 
     return (
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center p-6 h-full text-center max-w-lg mx-auto"
-        >
-            <div className="mb-8 relative">
-                <div className="absolute inset-0 bg-violet-200 blur-3xl opacity-30 rounded-full" />
-                <div className={clsx("w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl relative z-10 rotate-3 transform transition-transform hover:rotate-0", type.color)}>
-                    <Icon className="w-12 h-12" />
-                </div>
+        <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="h-full overflow-y-auto">
+          <div className="flex flex-col items-center p-6 text-center max-w-lg mx-auto">
+            <div className={clsx("w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg mb-4 mt-2", type.color)}>
+                <Icon className="w-8 h-8" />
             </div>
-            
-            <h2 className="text-sm font-bold tracking-widest text-gray-400 uppercase mb-2">Ваш стиль управления</h2>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">{type.title}</h1>
-            <p className="text-gray-600 leading-relaxed mb-6 text-lg">{type.description}</p>
-            
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 w-full mb-8 italic text-gray-500 text-sm">
-                "{type.quote}"
+            <h2 className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-1">Финал</h2>
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-3">{ending?.endingTitle || type.title}</h1>
+            {ending?.text && <p className="text-gray-700 leading-relaxed mb-5 text-sm md:text-base text-left">{ending.text}</p>}
+
+            <div className="w-full rounded-xl p-4 mb-5 text-left" style={{ background: g.bg }}>
+                <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-black" style={{ color: g.color }}>{g.label}</span>
+                    <span className="text-sm font-bold" style={{ color: g.color }}>{Math.max(0, g.score)} / 100</span>
+                </div>
+                <p className="text-xs text-gray-700">{g.note}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 w-full mb-8">
+            <div className="grid grid-cols-3 gap-3 w-full mb-5">
                 <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                     <div className="text-xl font-black text-emerald-600">{metrics.budget}</div>
                     <div className="text-[10px] uppercase font-bold text-emerald-800">Бюджет</div>
                 </div>
                 <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
                     <div className="text-xl font-black text-rose-600">{metrics.morale}</div>
-                    <div className="text-[10px] uppercase font-bold text-rose-800">Мораль</div>
+                    <div className="text-[10px] uppercase font-bold text-rose-800">Команда</div>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <div className="text-xl font-black text-blue-600">{metrics.satisfaction}</div>
-                    <div className="text-[10px] uppercase font-bold text-blue-800">Счастье</div>
+                <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-100">
+                    <div className="text-xl font-black text-cyan-700">{metrics.satisfaction}</div>
+                    <div className="text-[10px] uppercase font-bold text-cyan-900">Клиенты</div>
                 </div>
             </div>
 
-            <div className="flex gap-3 w-full">
+            <div className="w-full text-left space-y-4 mb-6">
+                {best.length > 0 && (
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-2">Что сработало</p>
+                        {best.map((d, i) => <p key={i} className="text-sm text-gray-700 mb-1.5">• {d.text} <span className="text-gray-400">({fmt(d.impact)})</span></p>)}
+                    </div>
+                )}
+                {worst.length > 0 && (
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-rose-700 mb-2">Что стоило дорого</p>
+                        {worst.map((d, i) => <p key={i} className="text-sm text-gray-700 mb-1.5">• {d.text} <span className="text-gray-400">({fmt(d.impact)})</span></p>)}
+                    </div>
+                )}
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Ошибки в задачах: {mistakes.length}</p>
+                    {mistakes.slice(0, 5).map((t, i) => <p key={i} className="text-xs text-gray-500 mb-1">• {t.length > 110 ? t.slice(0, 110) + '…' : t}</p>)}
+                </div>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 w-full mb-6 italic text-gray-500 text-xs">
+                Стиль управления: {type.title}. "{type.quote}"
+            </div>
+
+            <div className="flex gap-3 w-full mb-4">
                 <button
                     onClick={onRestart}
                     className="flex-1 text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5"
                     style={{ background: 'linear-gradient(135deg, #164e63, #0891b2)', boxShadow: '0 4px 14px rgba(8,145,178,0.25)' }}
                 >
                     <RefreshCcw className="w-4 h-4" />
-                    Ещё раз
-                </button>
-                <button className="px-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2" style={{ background: '#cffafe', color: '#0891b2' }}>
-                    <Share2 className="w-4 h-4" />
+                    Пройти ещё раз
                 </button>
             </div>
+          </div>
         </motion.div>
     );
 };
@@ -907,6 +947,10 @@ export function Simulator() {
     
     // --- Metrics State ---
     const [metrics, setMetrics] = useState<GameMetrics>({ budget: 50, morale: 50, satisfaction: 50 });
+    // Отложенные последствия, журнал решений и ошибок — для ветвления и разбора финала
+    const flagsRef = useRef<Set<string>>(new Set());
+    const [decisions, setDecisions] = useState<DecisionLog[]>([]);
+    const [mistakes, setMistakes] = useState<string[]>([]);
     const [lastChanges, setLastChanges] = useState<Partial<GameMetrics> | null>(null);
 
     const [taskAnswer, setTaskAnswer] = useState('');
@@ -961,6 +1005,9 @@ export function Simulator() {
         }
         setLastChanges(null);
         setTaskAnswer('');
+        flagsRef.current = new Set();
+        setDecisions([]);
+        setMistakes([]);
 
     }, [activeScenarioId]);
 
@@ -1121,7 +1168,14 @@ export function Simulator() {
     const isCritical = (m: GameMetrics) => m.budget <= 0 || m.morale <= 0 || m.satisfaction <= 0;
     const isWeak = (m: GameMetrics) =>
         Math.min(m.budget, m.morale, m.satisfaction) <= 15 || (m.budget + m.morale + m.satisfaction) / 3 < 40;
-    const goToNode = (id: string) => {
+    const resolveRouter = (id: string, depth = 0): string => {
+        const node = activeScenario.find((n) => n.id === id);
+        if (!node || node.type !== 'router' || depth > 10) return id;
+        const route = node.flagRoutes?.find((r) => flagsRef.current.has(r.flag));
+        return resolveRouter(route ? route.nextId : (node.nextId || id), depth + 1);
+    };
+    const goToNode = (rawId: string) => {
+        const id = resolveRouter(rawId);
         const target = activeScenario.find((n) => n.id === id);
         if (failEndingId && target && id !== failEndingId) {
             const m = metricsRef.current;
@@ -1135,6 +1189,8 @@ export function Simulator() {
     };
 
     const handleChoice = (choice: any) => {
+        (choice.setFlags || []).forEach((f: string) => flagsRef.current.add(f));
+        setDecisions((prev) => [...prev, { text: choice.messageText || choice.text, impact: choice.impact || {} }]);
         // Apply Metrics Impact immediately
         let newMetrics = metrics;
         if (choice.impact) {
@@ -1186,6 +1242,22 @@ export function Simulator() {
 
     const handleTaskComplete = (success: boolean) => {
         if (!currentNode?.task) return;
+        if (!success) {
+            // Ошибка стоит ресурсов: перебор ответов больше не бесплатен
+            const pen = currentNode.task.failImpact || { budget: -4, satisfaction: -4 };
+            const m = metricsRef.current;
+            const next = {
+                budget: Math.min(100, Math.max(0, m.budget + (pen.budget || 0))),
+                morale: Math.min(100, Math.max(0, m.morale + (pen.morale || 0))),
+                satisfaction: Math.min(100, Math.max(0, m.satisfaction + (pen.satisfaction || 0))),
+            };
+            setMetrics(next);
+            metricsRef.current = next;
+            setLastChanges(pen);
+            if (lastChangesTimerRef.current) clearTimeout(lastChangesTimerRef.current);
+            lastChangesTimerRef.current = setTimeout(() => { setLastChanges(null); lastChangesTimerRef.current = null; }, 2000);
+            setMistakes((prev) => [...prev, currentNode.task!.instruction]);
+        }
         const nextId = success ? currentNode.task.onSuccessId : currentNode.task.onFailId;
         goToNode(nextId);
     };
@@ -1470,7 +1542,7 @@ export function Simulator() {
                 <AnimatePresence>
                     {currentNode?.type === 'ending' ? (
                          <div className="absolute inset-0 bg-white z-40">
-                             <EndingScreen metrics={metrics} onRestart={() => window.location.reload()} />
+                             <EndingScreen metrics={metrics} ending={currentNode} decisions={decisions} mistakes={mistakes} onRestart={() => window.location.reload()} />
                          </div>
                     ) : (
                         <div className="w-full max-w-3xl flex flex-col shadow-xl h-full overflow-hidden" style={{ background: '#ffffff', borderLeft: '1px solid #cffafe', borderRight: '1px solid #cffafe' }}>

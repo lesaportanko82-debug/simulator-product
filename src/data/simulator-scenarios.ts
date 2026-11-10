@@ -1,7 +1,7 @@
 import { LucideIcon, TrendingUp, TrendingDown, Minus, AlertTriangle, ShieldAlert, DollarSign, Users, Activity } from 'lucide-react';
 
 // --- Types ---
-export const SIMULATOR_VERSION = 116; // 2026: ИИ-ветки, исправления логики
+export const SIMULATOR_VERSION = 117; // 2026: отложенные последствия, штрафы за ошибки, разбор финала
 export type Character = {
   name: string;
   role: string;
@@ -23,12 +23,15 @@ export type SimulationTask = {
   onFailId: string;
   hint?: string;
   data?: any;
+  /** Цена ошибки: применяется при каждом неверном ответе (по умолчанию −4 бюджет, −4 удовлетворённость). */
+  failImpact?: Partial<GameMetrics>;
 };
 
 export type SimulationNode = {
   id: string;
   senderId: string;
-  type: 'message' | 'choice' | 'task' | 'ending' | 'intro' | 'day_change' | 'learning';
+  /** 'router' не показывается: при входе выбирает следующий узел по флагам (flagRoutes) или идёт в nextId. */
+  type: 'message' | 'choice' | 'task' | 'ending' | 'intro' | 'day_change' | 'learning' | 'router';
   text?: string;
   introData?: {
     company: string;
@@ -42,7 +45,15 @@ export type SimulationNode = {
     nextId: string;
     impact?: Partial<GameMetrics>;
     messageText?: string;
+    /** Флаги решений: позже меняют ход истории (отложенные последствия). */
+    setFlags?: string[];
+    /** Текст карточки последствий вместо автоматического. */
+    consequenceStory?: string;
   }[];
+  /** Маршруты по флагам для узла 'router': первый подходящий выигрывает. */
+  flagRoutes?: { flag: string; nextId: string }[];
+  /** Заголовок финала. */
+  endingTitle?: string;
   task?: SimulationTask;
   resource?: {
     title: string;
