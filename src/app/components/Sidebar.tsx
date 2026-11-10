@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { courseData } from '@/data/course';
+import { weekLabel, courseData } from '@/data/course';
 import { Book, CheckCircle, LayoutDashboard, Briefcase, HelpCircle, ChevronDown, ChevronRight, FileText, User, Sparkles, MessageCircle, X, PlayCircle, Car, Pizza, Search, Mail } from 'lucide-react';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'motion/react';
@@ -233,7 +233,7 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
                             <week.icon strokeWidth={2.5} className="w-3 h-3" />
                           </div>
                           <span className="font-semibold text-xs" style={{ color: isActive ? "#f0fdff" : "#cffafe80" }}>
-                            Неделя {week.id}
+                            {weekLabel(week.id)}
                           </span>
                         </div>
                         {percent === 100

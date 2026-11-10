@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { courseData, Week } from '@/data/course';
+import { weekLabel, courseData, Week } from '@/data/course';
 import { Play, CheckCircle, Lock, Trophy, Star, ArrowRight, Activity, Calendar, Clock, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
@@ -254,7 +254,7 @@ export function Dashboard({ progress, userName }: DashboardProps) {
                                                     ? "bg-[#0891b2]/20 text-[#cffafe] border-[#67e8f9]/30"
                                                     : "bg-white/10 text-gray-300 border-white/10"
                                             )}>
-                                                Неделя {week.id}
+                                                {weekLabel(week.id)}
                                             </span>
                                         </div>
                                         <h4 className="text-2xl font-extrabold text-white leading-tight mb-4 line-clamp-2 drop-shadow-md tracking-tight">

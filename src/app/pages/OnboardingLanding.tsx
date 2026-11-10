@@ -176,7 +176,7 @@ export const OnboardingLanding = () => {
                 { icon: Brain,    color: 'cyan',    title: 'Умный AI-ментор', description: 'Интеграция с OpenAI для персонализированной обратной связи на ваши решения и ответы на вопросы в режиме 24/7.', features: ['Анализ ваших решений', 'Объяснение последствий', 'Рекомендации по улучшению', 'Ответы на вопросы о продукте'] },
               ];
               const rightItems = [
-                { icon: BookOpen, color: 'blue',    title: 'Структурированный курс', description: 'Полный курс по Product Management с модульной структурой, практическими заданиями и проверкой знаний.', features: ['Теория + практика в одном месте', 'Задания с обратной связью', 'Отслеживание прогресса', 'База знаний и кейсы'] },
+                { icon: BookOpen, color: 'blue',    title: 'Структурированный курс', description: 'Полный курс «Продуктовый маркетинг» с модульной структурой, практическими заданиями и проверкой знаний.', features: ['Теория + практика в одном месте', 'Задания с обратной связью', 'Отслеживание прогресса', 'База знаний и кейсы'] },
                 { icon: BarChart3,color: 'emerald', title: 'Метрики и прогресс', description: 'Отслеживайте ключевые показатели: команда, пользователи, бизнес, стейкхолдеры. Видите влияние своих решений в реальном времени.', features: ['Динамические метрики продукта', 'Визуализация прогресса', 'Статистика по решениям', 'Достижения и награды'] },
               ];
               const renderCol = (items: typeof leftItems) => (
@@ -289,7 +289,7 @@ export const OnboardingLanding = () => {
               <div className="space-y-2.5 mb-6">
                 {[
                   'Полный доступ ко всем сценариям',
-                  'Структурированный курс PM',
+                  'Курс «Продуктовый маркетинг»',
                   'AI-ментор с обратной связью',
                   'База знаний и кейсы',
                   'Q&A сессии с экспертами',
@@ -483,7 +483,7 @@ export const OnboardingLanding = () => {
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, rgba(8,145,178,0.4) 0%, #164e63 50%, #111827 100%)" }} />
         <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Начните свой путь в Product Management сегодня
+            Начните свой путь в продукте сегодня
           </h2>
           <p className="text-sm text-slate-400">
             Присоединяйтесь к 500+ студентам, которые уже строят карьеру в PM

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import { courseData } from '@/data/course';
+import { weekLabel, courseData } from '@/data/course';
 import { CheckCircle, Lock, PlayCircle, ArrowRight, ArrowLeft, Clock, BookOpen } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
@@ -60,7 +60,7 @@ export function WeekView({ progress }: WeekViewProps) {
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8 z-20 flex justify-between items-end">
              <div className="max-w-2xl">
                  <div className="flex items-center gap-3 font-bold uppercase tracking-wider text-xs mb-2" style={{ color: "#67e8f9" }}>
-                    <span className="px-2.5 py-1 rounded-md" style={{ background: "rgba(8,145,178,0.25)", color: "#cffafe", border: "1px solid rgba(103,232,249,0.3)" }}>Неделя {week.id}</span>
+                    <span className="px-2.5 py-1 rounded-md" style={{ background: "rgba(8,145,178,0.25)", color: "#cffafe", border: "1px solid rgba(103,232,249,0.3)" }}>{weekLabel(week.id)}</span>
                     <span className="text-white/40">•</span>
                     <span className="text-white/60">{completed} из {total} модулей</span>
                  </div>

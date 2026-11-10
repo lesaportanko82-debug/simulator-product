@@ -1,4 +1,5 @@
 import type { Module, Week } from './course-types';
+import { extraTheory, extraPractice } from './pmm-week67-extra';
 
 // Приводит тексты прежних уроков к роли продуктового маркетолога и обновляет устаревшие факты.
 export function toPmmText(s: string): string {
@@ -21,9 +22,9 @@ export function toPmmModule(m: Module): Module {
     title: toPmmText(m.title),
     description: toPmmText(m.description),
     tabs: {
-      theory: toPmmText(m.tabs.theory),
+      theory: toPmmText(m.tabs.theory) + (extraTheory[m.id] ? '\n' + extraTheory[m.id] : ''),
       example: toPmmText(m.tabs.example),
-      practice: toPmmText(m.tabs.practice),
+      practice: toPmmText(m.tabs.practice) + (extraPractice[m.id] ? '\n' + extraPractice[m.id] : ''),
       task: toPmmText(m.tabs.task),
     },
   };

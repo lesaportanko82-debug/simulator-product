@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Navigate, useNavigate, Link } from 'react-router-dom';
-import { courseData } from '@/data/course';
+import { weekLabel, courseData } from '@/data/course';
 import { CheckCircle, ChevronRight, BookOpen, Lightbulb, Dumbbell, PenTool, Lock, ArrowLeft, Clock, Paperclip, X, File, Loader2, ChevronLeft } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
@@ -532,7 +532,7 @@ export function ModuleView({ progress, onComplete }: ModuleViewProps) {
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8 z-20">
           <div className="max-w-4xl">
             <div className="flex items-center gap-3 text-indigo-300 font-bold uppercase tracking-wider text-xs mb-2">
-              <span className="bg-indigo-500/20 px-2.5 py-1 rounded-md text-indigo-200 border border-indigo-500/30">Неделя {week.id}</span>
+              <span className="bg-indigo-500/20 px-2.5 py-1 rounded-md text-indigo-200 border border-indigo-500/30">{weekLabel(week.id)}</span>
               <ChevronRight className="w-3 h-3 opacity-50" />
               <span className="truncate">{week.title.split(':')[1] || week.title}</span>
             </div>
